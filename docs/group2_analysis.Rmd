@@ -1,0 +1,817 @@
+---
+title: "Twitter Analysis of: `r handle` | `r handle2`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    theme: lumen
+    css: styles.css
+
+---
+
+---
+logo: `r logo`
+data: `r data`
+data2: `r data2`
+handle: `r handle`
+handle2: `r handle2`
+collage: `r collage`
+collage2: `r collage2`
+---
+<style>
+.navbar, [data-toggle=tab], .navbar-brand  {   background-color:white; border:2px; border-color:lightgray; color:white; }
+
+.navbar-logo img {
+    position: relative;
+    right: 0px;
+}
+</style>
+
+```{r}
+
+pacman::p_load(tidyverse, glue, flexdashboard, knitr, DT, highcharter)
+
+tl <- readRDS(data)$timeline
+user <- readRDS(data)$user
+
+tl2 <- readRDS(data2)$timeline
+user2 <- readRDS(data2)$user
+
+links <- readRDS(data)$links
+links2 <- readRDS(data2)$links
+
+pal <- c('#2f7ed8', '#0d233a', '#8bbc21', '#910000', '#1aadce',
+         '#492970', '#f28f43', '#77a1e5', '#c42525', '#a6c96a')
+years <- grep("2018",sort(unique(lubridate::year(tl$created_at))), 
+              invert=TRUE, value = TRUE)
+
+```
+
+Account Overview {data-orientation=rows}
+=======================================================================
+
+Row 
+-----------------------------------------------------------------------
+
+### Handle Info
+
+```{r}
+user %>% 
+  bind_rows(user2) %>% 
+  select(screen_name, name, statuses_count, friends_count, followers_count, favourites_count, listed_count,
+         description, created_at = account_created_at, user_id, profile_expanded_url, location) %>%
+  mutate(created_at = as.character(as.Date(created_at)),
+         across(contains("_count"), ~scales::comma(.))) %>%
+  pivot_longer(-screen_name, names_to = "Field", values_to = "Value") %>% 
+  pivot_wider(names_from = screen_name, 
+              values_from = Value) %>% 
+  mutate(Field = str_to_title(str_replace_all(Field, "_", " ")),
+         Field = ifelse(Field == "Profile Expanded Url", "URL", Field)) %>%
+  knitr::kable(align = "lcc") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "responsive")) 
+```
+
+### Posts by Day of Week 
+
+```{r}
+dow_ct <- bind_rows(tl, tl2) %>% 
+  count(screen_name, dow) %>% 
+  group_by(screen_name) %>%
+  mutate(frac = n/sum(n),
+         frac = scales::percent(frac, accuracy = 1))
+
+highchart() %>%
+  hc_add_series(dow_ct, "column", hcaes(x = dow, y = n, group = screen_name),
+                showInLegend = TRUE) %>%
+  hc_xAxis(categories = dow_ct$dow) %>% 
+  hc_yAxis(title = list(text = "Total Tweets")) %>% 
+  hc_colors(pal) %>%
+  hc_tooltip(headerFormat = "",
+    pointFormat = "<b>{point.dow}</b><br>
+             <span style=\"color:{point.color}\">\u25CF</span> {point.n} Tweets <br>
+             <span style=\"color:{point.color}\">\u25CF</span> {point.frac} of Total<br>",
+             shared = FALSE, style = list(pointerEvents = 'auto'))
+```
+
+Row {.tabset data-height=300}
+-----------------------------------------------------------------------
+
+### `r handle` Daily Rhythym - Posting Cadence by Day/Hour
+
+```{r, out.width = "100%"}
+day_hour <- tl %>% 
+  count(dow, hr) %>% 
+  mutate(hr = sprintf("%02d:00", hr)) %>% 
+  complete(dow, hr=sprintf("%02d:00", 0:23))  
+
+hchart(day_hour, "heatmap", hcaes(x = hr, y = dow, value = n)) %>%
+  hc_colorAxis(
+    stops = color_stops(8, my_pal("solr"))
+  ) %>%
+  hc_yAxis(reversed = TRUE, 
+           tickLength = 0,
+           labels = list(style = list(fontSize = "10px")),
+           title = list(text = "")) %>%
+  hc_xAxis(title = list(text = "Hour")) %>%
+  hc_plotOptions(
+    series = list(list(
+      stickyTracking = TRUE))) %>%
+  hc_tooltip(headerFormat = "",
+    pointFormat = "<b>{point.dow}</b> {point.hr} <br>
+             <span style=\"color:{point.color}\">\u25CF</span> {point.n} Tweets <br>",
+             shared = TRUE, style = list(pointerEvents = 'auto')) %>%
+  hc_legend(layout = "vertical", verticalAlign = "top",
+            align = "right", valueDecimals = 0) %>% 
+  hc_credits(enabled = TRUE,
+             text = "All times PST")
+
+```
+
+### `r handle2` Daily Rhythym - Posting Cadence by Day/Hour
+
+```{r, out.width = "100%"}
+day_hour <- tl2 %>% 
+  count(dow, hr) %>% 
+  mutate(hr = sprintf("%02d:00", hr)) %>% 
+  complete(dow, hr=sprintf("%02d:00", 0:23))  
+
+hchart(day_hour, "heatmap", hcaes(x = hr, y = dow, value = n)) %>%
+  hc_colorAxis(
+    stops = color_stops(8, my_pal("solr"))
+  ) %>%
+  hc_yAxis(reversed = TRUE, 
+           tickLength = 0,
+           labels = list(style = list(fontSize = "10px")),
+           title = list(text = "")) %>%
+  hc_xAxis(title = list(text = "Hour")) %>%
+  hc_plotOptions(
+    series = list(list(
+      stickyTracking = TRUE))) %>%
+  hc_tooltip(headerFormat = "",
+    pointFormat = "<b>{point.dow}</b> {point.hr} <br>
+             <span style=\"color:{point.color}\">\u25CF</span> {point.n} Tweets <br>",
+             shared = TRUE, style = list(pointerEvents = 'auto')) %>%
+  hc_legend(layout = "vertical", verticalAlign = "top",
+            align = "right", valueDecimals = 0) %>% 
+  hc_credits(enabled = TRUE,
+             text = "All times PST")
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Daily Rhythym - Posts per Day
+
+```{r, out.width = "100%"}
+day_count1 <- tl %>% 
+  group_by(tsday) %>% 
+  dplyr::summarise(n1 = dplyr::n()) 
+
+day_count2 <- tl2 %>% 
+  group_by(tsday) %>% 
+  dplyr::summarise(n2 = dplyr::n()) 
+
+day_count <- day_count2 %>% 
+  left_join(day_count1) %>% 
+  dplyr::mutate(id = dplyr::row_number())
+
+# fit the predicted loess line
+library(broom)
+modlss <- loess(n1 ~ id, data = day_count)
+modlss2 <- loess(n2 ~ id, data = day_count)
+
+fit <- augment(modlss) %>% arrange(id) %>% 
+  mutate(.fitted = round(.fitted, digits = 2))
+fit2 <- augment(modlss2) %>% arrange(id) %>% 
+  mutate(.fitted = round(.fitted, digits = 2))
+
+highchart() %>%
+  hc_xAxis(categories = day_count$tsday) %>%
+  hc_yAxis(title = list(text = "Daily Tweets"), ymin = 0) %>%
+  hc_add_series(day_count, type = "column", hcaes(x = id, y = n1), name = paste0(handle, " Count")) %>%
+  hc_add_series(fit, type = "spline", hcaes(x = id, y = .fitted), name = paste0(handle," Average")) %>% 
+  hc_add_series(day_count, type = "column", hcaes(x = id, y = n2), name = paste0(handle2," Count")) %>%
+  hc_add_series(fit2, type = "spline", hcaes(x = id, y = .fitted), name = paste0(handle2," Average")) %>%
+  hc_colors(pal) %>%
+  hc_plotOptions(spline = list(
+    marker = list(
+      fillColor = "white",
+      lineWidth = 2,
+      lineColor = NULL,
+      radius = 0
+    ))) %>% 
+  hc_tooltip(shared = TRUE)
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Average Engagements by Tweet Type - `r years[3]` 
+
+```{r}
+eng <- tl %>% 
+  bind_rows(tl2) %>%
+  group_by(screen_name) %>%
+  mutate(tweet_type = case_when(
+    is_retweet ~ "Retweet",
+    is_quote ~ "Quote",
+    reply_to_user_id == user_id ~ "Self-Reply",
+    !is.na(reply_to_user_id) ~ "Reply",
+    TRUE ~ "Tweet"),
+    year = lubridate::year(created_at)) %>% 
+  group_by(screen_name, followers_count, year, tweet_type) %>%
+  summarise(fav = mean(favorite_count), rt = mean(retweet_count)) %>%
+  mutate(eng = round(fav+rt),
+         er = eng/followers_count) %>%
+  select(-c(fav, rt, eng)) %>%
+  arrange(year, tweet_type, screen_name) 
+
+maxeng <- max(eng$er)*100
+
+highchart() %>%
+  hc_add_series(subset(eng, year == years[3]), "column",
+                hcaes(x = tweet_type, y = round(er*100,2), group = screen_name),
+                showInLegend = TRUE) %>%
+  hc_colors(pal) %>%
+  hc_xAxis(type = 'category',
+           title = list(text = "Tweet Type")) %>% 
+  hc_yAxis(title = list(text = "Engagement Rate"), min = 0, 
+           max = round((max(eng$er)*100)*1.15,2),
+           labels = list(format = "{value}%")) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             pointFormat = "<span style=\"color:{series.color}\">\u25CF</span> {point.screen_name}: {point.y}%") %>%
+  hc_credits(enabled = TRUE,
+             text = "ER% calculated using Follower Count at time of report rather than actual reach or impressions.")
+```
+
+### Average Engagement Rate by Tweet Type - `r years[2]` 
+
+```{r}
+eng <- tl %>% 
+  bind_rows(tl2) %>%
+  group_by(screen_name) %>%
+  mutate(tweet_type = case_when(
+    is_retweet ~ "Retweet",
+    is_quote ~ "Quote",
+    reply_to_user_id == user_id ~ "Self-Reply",
+    !is.na(reply_to_user_id) ~ "Reply",
+    TRUE ~ "Tweet"),
+    year = lubridate::year(created_at)) %>% 
+  group_by(screen_name, followers_count, year, tweet_type) %>%
+  summarise(fav = mean(favorite_count), rt = mean(retweet_count)) %>%
+  mutate(eng = round(fav+rt),
+         er = eng/followers_count) %>%
+  select(-c(fav, rt, eng)) %>%
+  arrange(year, tweet_type, screen_name)
+
+maxeng <- max(eng$er)*100
+
+highchart() %>%
+  hc_add_series(subset(eng, year == years[2]), "column",
+                hcaes(x = tweet_type, y = round(er*100,2), group = screen_name),
+                showInLegend = TRUE) %>%
+  hc_colors(pal) %>%
+  hc_xAxis(type = 'category',
+           title = list(text = "Tweet Type")) %>% 
+  hc_yAxis(title = list(text = "Engagement Rate"), min = 0, 
+           max = round((max(eng$er)*100)*1.15,2),
+           labels = list(format = "{value}%")) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             pointFormat = "<span style=\"color:{series.color}\">\u25CF</span> {point.screen_name}: {point.y}%") %>%
+  hc_credits(enabled = TRUE,
+             text = "ER% calculated using Follower Count at time of report rather than actual reach or impressions.")
+```
+
+### Average Engagement Rate by Tweet Type - `r years[1]` 
+
+```{r}
+eng <- tl %>% 
+  bind_rows(tl2) %>%
+  group_by(screen_name) %>%
+  mutate(tweet_type = case_when(
+    is_retweet ~ "Retweet",
+    is_quote ~ "Quote",
+    reply_to_user_id == user_id ~ "Self-Reply",
+    !is.na(reply_to_user_id) ~ "Reply",
+    TRUE ~ "Tweet"),
+    year = lubridate::year(created_at)) %>% 
+  group_by(screen_name, followers_count, year, tweet_type) %>%
+  summarise(fav = mean(favorite_count), rt = mean(retweet_count)) %>%
+  mutate(eng = round(fav+rt),
+         er = eng/followers_count) %>%
+  select(-c(fav, rt, eng)) %>%
+  arrange(year, tweet_type, screen_name)
+
+maxeng <- max(eng$er)*100
+
+highchart() %>%
+  hc_add_series(subset(eng, year == years[1]), "column",
+                hcaes(x = tweet_type, y = round(er*100,2), group = screen_name),
+                showInLegend = TRUE) %>%
+  hc_colors(pal) %>%
+  hc_xAxis(type = 'category',
+           title = list(text = "Tweet Type")) %>% 
+  hc_yAxis(title = list(text = "Engagement Rate"), min = 0, 
+           max = round((max(eng$er)*100)*1.15,2),
+           labels = list(format = "{value}%")) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             pointFormat = "<span style=\"color:{series.color}\">\u25CF</span> {point.screen_name}: {point.y}%") %>%
+  hc_credits(enabled = TRUE,
+             text = "ER% calculated using Follower Count at time of report rather than actual reach or impressions.")
+```
+
+### Average Engagement Rate by Tweet Type (Yearly Table)
+
+```{r}
+tl %>% 
+  bind_rows(tl2) %>%
+  group_by(screen_name) %>%
+  mutate(tweet_type = case_when(
+    is_retweet ~ "Retweet",
+    is_quote ~ "Quote",
+    reply_to_user_id == user_id ~ "Self-Reply",
+    !is.na(reply_to_user_id) ~ "Reply",
+    TRUE ~ "Tweet"),
+    year = lubridate::year(created_at)) %>% 
+  group_by(screen_name, followers_count, year, tweet_type) %>%
+  summarise(fav = mean(favorite_count), rt = mean(retweet_count)) %>%
+  mutate(eng = round(fav+rt),
+         er = scales::percent(eng/followers_count)) %>%
+  ungroup %>% 
+  select(-c(fav, rt, eng, followers_count)) %>%
+  arrange(year, screen_name) %>%
+  pivot_wider(
+    names_from = c(year, screen_name),
+    values_from = er
+  ) %>% 
+  select(-contains("2018")) %>%
+  knitr::kable(align = "lcccccc", 
+               col.names = c("Type", rep(c(handle, handle2), length(years)))) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "responsive")) %>%
+  kableExtra::add_header_above(c(" ", "2019" = 2, "2020" = 2, "2021" = 2), color = pal[4])
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Tweet Type 
+
+```{r}
+tweet_type1 <- mutate(tl, tweet_type = case_when(
+  is_retweet ~ "Retweet",
+  is_quote ~ "Quote",
+  reply_to_user_id == user_id ~ "Self-Reply",
+  !is.na(reply_to_user_id) ~ "Reply",
+  TRUE ~ "Tweet"
+)) %>% 
+  count(tweet_type, sort=TRUE) %>% 
+  mutate(frac = scales::percent(n/sum(n), accuracy = 1),
+         h = handle)
+
+tweet_type2 <- mutate(tl2, tweet_type = case_when(
+  is_retweet ~ "Retweet",
+  is_quote ~ "Quote",
+  reply_to_user_id == user_id ~ "Self-Reply",
+  !is.na(reply_to_user_id) ~ "Reply",
+  TRUE ~ "Tweet"
+)) %>% 
+  count(tweet_type, sort=TRUE) %>% 
+  mutate(frac = scales::percent(n/sum(n), accuracy = 1),
+         h = handle2)
+
+tweet_type <- bind_rows(tweet_type1, tweet_type2)
+
+hcoptslang <- getOption("highcharter.lang")
+hcoptslang$thousandsSep <- ","
+options(highcharter.lang = hcoptslang)
+
+highchart() %>%
+  hc_add_series(tweet_type, "bar", hcaes(x = tweet_type, y = n, group = h),
+                showInLegend = TRUE) %>% 
+  hc_xAxis(categories = tweet_type$tweet_type) %>% 
+  hc_colors(pal) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>{point.h} - {point.tweet_type}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Tweets: {point.y}<br>
+                          <span style=\"color:{point.color}\">\u25CF</span> % of Tweets {point.frac}<br>") %>%
+  hc_plotOptions(line = list(
+                             marker = list(
+                               enabled = FALSE
+                               )))
+```
+
+### Used Interface
+
+```{r}
+ui1 <- count(tl, source, sort=TRUE) %>% 
+  mutate(source = fct_inorder(source) %>% fct_rev(),
+         frac = scales::percent(n/sum(n), accuracy = 1),
+         h = handle)
+
+ui2 <- count(tl2, source, sort=TRUE) %>% 
+  mutate(source = fct_inorder(source) %>% fct_rev(),
+         frac = scales::percent(n/sum(n), accuracy = 1),
+         h = handle2)
+
+ui <- bind_rows(ui1, ui2)
+
+highchart() %>%
+  hc_add_series(ui, "bar", hcaes(x = source, y = n, group = h),
+                showInLegend = TRUE) %>% 
+  hc_xAxis(categories = ui$source) %>% 
+  hc_colors(pal) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>{point.source}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Tweets: {point.y}<br>
+                          <span style=\"color:{point.color}\">\u25CF</span> % of Tweets {point.frac}<br>")
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Hashtag Usage - `r handle`
+
+```{r}
+hash <- unlist(tl$hashtags) %>% 
+  discard(is.na) %>% 
+  fct_lump(n = 15, ties = "first") %>% 
+  table(dnn="hashtag") %>%
+  as_tibble() %>%
+  arrange(desc(n)) %>% 
+  mutate(hashtag = factor(hashtag, levels = c(setdiff(hashtag, "Other"), "Other")) %>% 
+  fct_rev()) %>% 
+  filter(hashtag != "Other")
+
+highchart() %>%
+  hc_add_series(hash, "bar", hcaes(x = hashtag, y = n), color = pal[1],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = hash$hashtag) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>#{point.hashtag}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+### Links Shared - `r handle` 
+
+```{r, error = TRUE}
+top_url <- links %>%
+  pull() %>% 
+  urltools::domain() %>% 
+  urltools::suffix_extract() %>% 
+  as_tibble() %>% 
+  mutate(apex = glue::glue("{domain}.{suffix}")) %>% 
+  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>% 
+  count(apex, sort=TRUE) %>% 
+  mutate(apex = factor(apex, levels = c(setdiff(apex, "Other"), "Other"))) %>% 
+  filter(apex != "Other")
+
+highchart() %>%
+  hc_add_series(top_url, "bar", hcaes(x = apex, y = n), color = pal[1],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = top_url$apex) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>#{point.apex}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Hashtag Usage - `r handle2`
+
+```{r}
+hash <- unlist(tl2$hashtags) %>% 
+  discard(is.na) %>% 
+  fct_lump(n = 15, ties = "first") %>% 
+  table(dnn="hashtag") %>%
+  as_tibble() %>%
+  arrange(desc(n)) %>% 
+  mutate(hashtag = factor(hashtag, levels = c(setdiff(hashtag, "Other"), "Other")) %>% 
+  fct_rev()) %>% 
+  filter(hashtag != "Other")
+
+highchart() %>%
+  hc_add_series(hash, "bar", hcaes(x = hashtag, y = n), color = pal[2],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = hash$hashtag) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>#{point.hashtag}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+
+
+### Links Shared - `r handle2` 
+
+```{r, error = TRUE}
+top_url <- links2 %>%
+  pull() %>% 
+  urltools::domain() %>% 
+  urltools::suffix_extract() %>% 
+  as_tibble() %>% 
+  mutate(apex = glue::glue("{domain}.{suffix}")) %>% 
+  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>% 
+  count(apex, sort=TRUE) %>% 
+  mutate(apex = factor(apex, levels = c(setdiff(apex, "Other"), "Other"))) %>% 
+  filter(apex != "Other")
+
+highchart() %>%
+  hc_add_series(top_url, "bar", hcaes(x = apex, y = n), color = pal[2],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = top_url$apex) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>#{point.apex}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Replied Users - `r handle` 
+
+```{r}
+reply <- unlist(tl$reply_to_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="replied_to_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(replied_to_users = factor(replied_to_users, levels = c(setdiff(replied_to_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(replied_to_users != "Other")
+
+highchart() %>%
+  hc_add_series(reply, "bar", hcaes(x = replied_to_users, y = n), color = pal[1],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = reply$replied_to_users) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.replied_to_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+### Retweeted Users - `r handle`  
+
+```{r}
+retweet <- unlist(tl$retweet_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="retweeted_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(retweeted_users = factor(retweeted_users, levels = c(setdiff(retweeted_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(retweeted_users != "Other")
+
+highchart() %>%
+  hc_add_series(retweet, "bar", hcaes(x = retweeted_users, y = n), color = pal[1], 
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = retweet$retweeted_users,
+           allowDecimals = FALSE) %>% 
+  hc_yAxis(allowDecimals = FALSE) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.retweeted_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+### Quoted Users - `r handle`  
+
+```{r}
+quote <- unlist(tl$quoted_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="quoted_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(quoted_users = factor(quoted_users, levels = c(setdiff(quoted_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(quoted_users != "Other")
+
+highchart() %>%
+  hc_add_series(quote, "bar", hcaes(x = quoted_users, y = n), color = pal[1],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = quote$quoted_users) %>%
+  hc_yAxis(allowDecimals = FALSE) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.quoted_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Replied Users - `r handle2` 
+
+```{r}
+reply <- unlist(tl2$reply_to_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="replied_to_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(replied_to_users = factor(replied_to_users, levels = c(setdiff(replied_to_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(replied_to_users != "Other")
+
+highchart() %>%
+  hc_add_series(reply, "bar", hcaes(x = replied_to_users, y = n), color = pal[2],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = reply$replied_to_users) %>% 
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.replied_to_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+### Retweeted Users - `r handle2`  
+
+```{r}
+retweet <- unlist(tl2$retweet_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="retweeted_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(retweeted_users = factor(retweeted_users, levels = c(setdiff(retweeted_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(retweeted_users != "Other")
+
+highchart() %>%
+  hc_add_series(retweet, "bar", hcaes(x = retweeted_users, y = n), color = pal[2],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = retweet$retweeted_users,
+           allowDecimals = FALSE) %>% 
+  hc_yAxis(allowDecimals = FALSE) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.retweeted_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+```
+
+### Quoted Users - `r handle2`  
+
+```{r}
+quote <- unlist(tl2$quoted_screen_name) %>% 
+  discard(is.na) %>% 
+  tolower() %>% 
+  fct_lump(n = 10, ties = "first") %>% 
+  table(dnn="quoted_users") %>% 
+  as_tibble() %>%
+  # broom::tidy() %>% 
+  arrange(desc(n)) %>% 
+  mutate(quoted_users = factor(quoted_users, levels = c(setdiff(quoted_users, "Other"), "Other")) %>% fct_rev()) %>% 
+  filter(quoted_users != "Other")
+
+highchart() %>%
+  hc_add_series(quote, "bar", hcaes(x = quoted_users, y = n), color = pal[2],
+                showInLegend = FALSE) %>% 
+  hc_xAxis(categories = quote$quoted_users) %>%
+  hc_yAxis(allowDecimals = FALSE) %>%
+  hc_tooltip(crosshairs = TRUE,
+             headerFormat = "",
+             pointFormat = "<b>@{point.quoted_users}</b><br>
+                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+
+```
+
+Media Imagery {data-orientation=rows}
+=======================================================================
+
+Row {.tabset data-height=1100}
+-----------------------------------------------------------------------
+
+### Imagery Used - `r handle` `r years[3]`  
+
+<!-- Div fencing (https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html) -->
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage[3])
+```
+
+:::: 
+
+### Imagery Used - `r handle2`  `r years[3]`  
+
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage2[3])
+```
+
+:::: 
+
+### Imagery Used - `r handle` `r years[2]`  
+
+<!-- Div fencing (https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html) -->
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage[2])
+```
+
+:::: 
+
+### Imagery Used - `r handle2`  `r years[2]`  
+
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage2[2])
+```
+
+:::: 
+
+### Imagery Used - `r handle` `r years[1]`  
+
+<!-- Div fencing (https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html) -->
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage[1])
+```
+
+:::: 
+
+### Imagery Used - `r handle2`  `r years[1]`  
+
+:::: {style="display: flex;"}
+
+```{r, error = TRUE, fig.retina = 1}
+knitr::include_graphics(collage2[1])
+```
+
+:::: 
+
+Tweets 
+=======================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Tweets - `r handle` 
+
+```{r}
+
+mutate(tl, tweet_type = case_when(
+  is_retweet ~ "Retweet",
+  is_quote ~ "Quote",
+  reply_to_user_id == user_id ~ "Self-Reply",
+  !is.na(reply_to_user_id) ~ "Reply",
+  TRUE ~ "Tweet"),
+  link = "Link",
+  link = paste0('<a href="',status_url,'"target="_blank">',link ,"</a>"),
+  created_at = as.Date(created_at)
+) %>%
+  select(created_at, tweet_type, text, retweet_count, favorite_count, link, status_url) %>%
+  DT::datatable(fillContainer = FALSE, escape = -6, filter = 'top',
+                extensions = "Buttons", rownames = FALSE,
+                options = list(dom = "Blfrtip",
+                               buttons = c('csv', 'excel'),
+                               pageLength = 20,
+                               columnDefs = list(list(width = '350px', targets = 2),
+                                                 list(visible=FALSE, targets = c(6)))))
+
+```
+
+### Tweets - `r handle2` 
+
+```{r}
+
+mutate(tl2, tweet_type = case_when(
+  is_retweet ~ "Retweet",
+  is_quote ~ "Quote",
+  reply_to_user_id == user_id ~ "Self-Reply",
+  !is.na(reply_to_user_id) ~ "Reply",
+  TRUE ~ "Tweet"),
+  link = "Link",
+  link = paste0('<a href="',status_url,'"target="_blank">',link ,"</a>"),
+  created_at = as.Date(created_at)
+) %>%
+  select(created_at, tweet_type, text, retweet_count, favorite_count, link, status_url) %>%
+  DT::datatable(fillContainer = FALSE, escape = -6, filter = 'top',
+                extensions = "Buttons", rownames = FALSE,
+                options = list(dom = "Blfrtip",
+                               buttons = c('csv', 'excel'),
+                               pageLength = 20,
+                               columnDefs = list(list(width = '350px', targets = 2),
+                                                 list(visible=FALSE, targets = c(6)))))
+
+```
