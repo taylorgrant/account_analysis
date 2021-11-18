@@ -1,0 +1,114 @@
+---
+title: "Analysis of: `r handle` - `r str_to_title(report)`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    theme: lumen
+    css: styles.css
+---
+---
+logo: `r logo`
+data: `r data`
+handle: `r handle`
+---
+<style>
+.navbar, [data-toggle=tab], .navbar-brand  {   background-color:white; border:2px; border-color:lightgray; color:white; }
+
+.navbar-logo img {
+    position: relative;
+    right: 0px;
+}
+</style>
+
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, glue, flexdashboard, knitr, DT, highcharter)
+# set up knitr rules and directory
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# grab data
+df <- readRDS(data)
+x_phi <- df$x_phi
+tinfo <- df$term_info %>%
+  select(Topic, Term, Freq) %>% 
+  group_by(Topic) %>% 
+  arrange(desc(Freq), .by_group = TRUE)
+json <- df$json
+
+pal <- c('#2f7ed8', '#0d233a', '#8bbc21', '#910000', '#1aadce',
+         '#492970', '#f28f43', '#77a1e5', '#c42525', '#a6c96a')
+```
+
+<!-- You might want to add cache=TRUE for the data block if you're tweaking the aestehtics -->
+
+Topic Modeling - Brand {data-orientation=columns}
+=======================================================================
+
+Column 
+-----------------------------------------------------------------------
+
+### Intertopic Distance Map (via multidimensional scaling)
+
+```{r, fig.height=8}
+library(crosstalk)
+library(plotly)
+
+sdpoints <- SharedData$new(x_phi, 
+                           group = "xx",
+                           key = ~Topic)
+sdfeatures <- SharedData$new(tinfo, 
+                             group = "xx",
+                             key = ~Topic)
+
+# plot 
+p <- ggplot(sdpoints, aes(x = x, y = y, label = id)) +
+  geom_vline(xintercept = 0, color = "gray") + 
+  geom_hline(yintercept = 0, color = "gray") + 
+  geom_point(aes(size = frac), shape = 21,colour = pal[2],
+             fill = pal[8], alpha = .5) +
+  geom_text(size = 3, color = "black") +
+  scale_size(range = c(0, 20)) +
+  theme_twg(grid = FALSE) +
+  theme(legend.position = "none",
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank()) +
+  annotate("text", x = 0.017, y = (1.12*max(x_phi$y)),
+           label = "PC2", color = pal[4]) +
+  annotate("text", x = 1.01*min(x_phi$x), y = .01,
+           label = "PC1", color = pal[4]) +
+  labs(x = NULL, y =  NULL,
+       caption = "Circle size indicates size of topic within total set of tweets")
+
+plotly::ggplotly(p) %>% 
+  plotly::layout(showlegend = F,
+                 autosize = F) %>%
+  plotly::style(hoverinfo = 'text',
+                hovertext = paste0(scales::percent(x_phi$frac, accuracy = .1), " of tokens")) %>%
+  plotly::highlight(on = 'plotly_hover',
+                    opacityDim = .75)
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Top 20 Most Salient Terms
+
+```{r}
+sdfeatures %>%
+  DT::datatable(rownames = FALSE, fillContainer = FALSE,
+                caption = 'Top 20 terms for each topic based upon an optimal blend of topic-specific probability and relevance',
+  options=list(pageLength = 20,
+               dom = "t",
+               columnDefs = list(list(className = 'dt-center', 
+                                     targets = 1)))) %>%
+  formatRound(c('Freq'), 2) %>%
+  DT::formatStyle(columns = names(tinfo[3]),
+                  background = DT::styleColorBar(range(tinfo[,3]),
+                                                 "#bc4b51"),
+                  backgroundSize = '100% 40%',
+                  backgroundRepeat = 'no-repeat',
+                  backgroundPosition = 'left')
+```
+
+
+
