@@ -460,15 +460,14 @@ highchart() %>%
 
 ```{r, error = TRUE}
 top_url <- links %>%
-  pull() %>% 
-  urltools::domain() %>% 
-  urltools::suffix_extract() %>% 
-  as_tibble() %>% 
+  mutate(x = urltools::domain(expanded_url),
+         urltools::suffix_extract(x)) %>%
   mutate(apex = glue::glue("{domain}.{suffix}")) %>% 
-  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>% 
-  count(apex, sort=TRUE) %>% 
+  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>%
+  group_by(apex) %>% summarise(n = sum(n)) %>%
+  arrange(desc(n)) %>%
   mutate(apex = factor(apex, levels = c(setdiff(apex, "Other"), "Other"))) %>% 
-  filter(apex != "Other")
+  filter(apex != "Other" & apex != "NA.NA")
 
 highchart() %>%
   hc_add_series(top_url, "bar", hcaes(x = apex, y = n), color = pal[1],
@@ -512,15 +511,14 @@ highchart() %>%
 
 ```{r, error = TRUE}
 top_url <- links2 %>%
-  pull() %>% 
-  urltools::domain() %>% 
-  urltools::suffix_extract() %>% 
-  as_tibble() %>% 
+  mutate(x = urltools::domain(expanded_url),
+         urltools::suffix_extract(x)) %>%
   mutate(apex = glue::glue("{domain}.{suffix}")) %>% 
-  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>% 
-  count(apex, sort=TRUE) %>% 
+  mutate(apex = fct_lump(apex, n = 10, ties = "first")) %>%
+  group_by(apex) %>% summarise(n = sum(n)) %>%
+  arrange(desc(n)) %>%
   mutate(apex = factor(apex, levels = c(setdiff(apex, "Other"), "Other"))) %>% 
-  filter(apex != "Other")
+  filter(apex != "Other" & apex != "NA.NA")
 
 highchart() %>%
   hc_add_series(top_url, "bar", hcaes(x = apex, y = n), color = pal[2],
