@@ -42,15 +42,15 @@ group_report <- function(handle, handle2 = NULL, handle3 = NULL) {
     # extract date that it was run - we're pulling the last (most recent)
     h1_date <- dplyr::last(dir(file.path(dd, glue::glue('{handle}'))))
     h2_date <- dplyr::last(dir(file.path(dd, glue::glue('{handle2}'))))
-    h3_date <- dplyr::last(dir(file.path(dd, glue::glue({handle3}))))
+    h3_date <- dplyr::last(dir(file.path(dd, glue::glue('{handle3}'))))
     # twitter data pull 
     data <- file.path(dd, handle, h1_date, glue::glue('{handle}_twitter_info.rds'))
     data2 <- file.path(dd, handle2, h2_date, glue::glue('{handle2}_twitter_info.rds'))
     data3 <- file.path(dd, handle3, h3_date, glue::glue('{handle3}_twitter_info.rds'))
     # twitter imagery (excluding 2018) 
-    collage <- grep("2018", dir(file.path(dd, handle, h1_date, "final_cols"), full.names = TRUE), invert=TRUE, value = TRUE) 
-    collage2 <- grep("2018", dir(file.path(dd, handle2, h2_date, "final_cols"), full.names = TRUE), invert=TRUE, value = TRUE)
-    collage3 <- grep("2018", dir(file.path(dd, handle3, h3_date, "final_cols"), full.names = TRUE), invert=TRUE, value = TRUE)
+    collage <- dir(file.path(dd, handle, h1_date, "final_cols"), full.names = TRUE)
+    collage2 <- dir(file.path(dd, handle2, h2_date, "final_cols"), full.names = TRUE)
+    collage3 <- dir(file.path(dd, handle3, h3_date, "final_cols"), full.names = TRUE)
     # run report 
     rmarkdown::render(input = file.path(d, "docs/group3_analysis.Rmd"),
                       output_file = glue::glue(d, "/brand_reports/group3/{handle}-{handle2}-{handle3}-{date}.html"),
@@ -66,10 +66,4 @@ group_report <- function(handle, handle2 = NULL, handle3 = NULL) {
                                     collage3 = collage3))
   }
 }
-  
-  
- 
-group_report("BMWUSA")
-group_report(handle = "BMWUSA", handle2 = "MercedesBenzUSA")
-group_report(handle = "BMWUSA", handle2 = "MercedesBenzUSA", handle3 = "Lexus")
  
