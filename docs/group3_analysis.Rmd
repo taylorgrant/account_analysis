@@ -46,8 +46,15 @@ links3 <- readRDS(data3)$links
 
 pal <- c('#2f7ed8', '#0d233a', '#8bbc21', '#910000', '#1aadce',
          '#492970', '#f28f43', '#77a1e5', '#c42525', '#a6c96a')
-years <- grep("2018",sort(unique(lubridate::year(tl$created_at))), 
-              invert=TRUE, value = TRUE)
+years <- seq(max(unique(lubridate::year(tl$tsday)))-2,
+             max(unique(lubridate::year(tl$tsday))), 1)
+
+
+h1_years <- tibble(order = 1, handle = handle, years = unique(lubridate::year(tl$tsday))[unique(lubridate::year(tl$tsday)) > 2018])
+h2_years <- tibble(order = 2, handle = handle2, years = unique(lubridate::year(tl2$tsday))[unique(lubridate::year(tl2$tsday)) > 2018])
+h3_years <- tibble(order = 3, handle = handle3, years =  unique(lubridate::year(tl3$tsday))[unique(lubridate::year(tl3$tsday)) > 2018])
+handle_years <- bind_rows(h1_years, h2_years, h3_years) %>%
+  arrange(years, handle)
 
 ```
 
@@ -374,6 +381,9 @@ highchart() %>%
 ### Annual Engagement Rate (Table)
 
 ```{r}
+header_ct <- handle_years %>% 
+  count(years)
+
 tl %>% 
   bind_rows(tl2) %>%
   bind_rows(tl3) %>%
@@ -389,7 +399,7 @@ tl %>%
   summarise(fav = mean(favorite_count), rt = mean(retweet_count)) %>%
   mutate(eng = round(fav+rt),
          er = scales::percent(eng/followers_count)) %>%
-  filter(year != "2018") %>%
+  filter(year > "2018") %>%
   ungroup %>% 
   select(-c(fav, rt, eng, followers_count)) %>%
   arrange(year, screen_name) %>%
@@ -398,9 +408,9 @@ tl %>%
     values_from = er
   ) %>% 
   knitr::kable(align = "lccccccccc", 
-               col.names = c("Type", rep(c(handle, handle2, handle3), length(years)))) %>%
+               col.names = c("Type", handle_years$handle)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  kableExtra::add_header_above(c(" ", "2019" = 3, "2020" = 3, "2021" = 3), color = pal[4])
+  kableExtra::add_header_above(c(" ", tibble::deframe(header_ct)), color = pal[4])
 ```
 
 Row
@@ -485,13 +495,13 @@ ui3 <- count(tl3, source, sort=TRUE) %>%
 ui <- bind_rows(ui1, ui2, ui3)
 
 highchart() %>%
-  hc_add_series(ui, "bar", hcaes(x = source, y = n, group = h),
+  hc_add_series(ui, "bar", hcaes(x = h, y = n, group = source),
                 showInLegend = TRUE) %>% 
-  hc_xAxis(categories = ui$source) %>%
+  hc_xAxis(categories = unique(ui$h)) %>%
   hc_colors(pal) %>%
   hc_tooltip(crosshairs = TRUE,
              headerFormat = "",
-             pointFormat = "<b>{point.source}</b><br>
+             pointFormat = "<b>{point.h} - {point.source}</b><br>
                             <span style=\"color:{point.color}\">\u25CF</span> Tweets: {point.y}<br>
                           <span style=\"color:{point.color}\">\u25CF</span> % of Tweets {point.frac}<br>")
 
@@ -897,7 +907,7 @@ Row {.tabset data-height=1000}
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage[3])
+knitr::include_graphics(collage[length(collage)])
 ```
 
 :::: 
@@ -907,7 +917,7 @@ knitr::include_graphics(collage[3])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage2[3])
+knitr::include_graphics(collage2[length(collage2)])
 ```
 
 :::: 
@@ -917,7 +927,7 @@ knitr::include_graphics(collage2[3])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage3[3])
+knitr::include_graphics(collage3[length(collage3)])
 ```
 
 :::: 
@@ -931,7 +941,7 @@ Row {.tabset data-height=1000}
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage[2])
+knitr::include_graphics(collage[length(collage)-1])
 ```
 
 :::: 
@@ -941,7 +951,7 @@ knitr::include_graphics(collage[2])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage2[2])
+knitr::include_graphics(collage2[length(collage2)-1])
 ```
 
 :::: 
@@ -951,7 +961,7 @@ knitr::include_graphics(collage2[2])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage3[2])
+knitr::include_graphics(collage3[length(collage3)-1])
 ```
 
 :::: 
@@ -965,7 +975,7 @@ Row {.tabset data-height=1000}
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage[1])
+knitr::include_graphics(collage[length(collage)-2])
 ```
 
 :::: 
@@ -975,7 +985,7 @@ knitr::include_graphics(collage[1])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage2[1])
+knitr::include_graphics(collage2[length(collage2)-2])
 ```
 
 :::: 
@@ -985,7 +995,7 @@ knitr::include_graphics(collage2[1])
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collage3[1])
+knitr::include_graphics(collage3[length(collage3)-2])
 ```
 
 :::: 
