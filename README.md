@@ -13,6 +13,21 @@ Helper functions are used to build the reports. Brand account reports
 visualizations via crosstalk. The TM reports approximate the `LDAvis`
 visuals for a set value of lambda (0.6).
 
+## To run
+
+``` r
+# Twitter Summary 
+source(here("functions", "render_group_report.R"))
+group_report("BMWUSA")
+group_report(handle = "BMWUSA", handle2 = "MercedesBenzUSA")
+group_report(handle = "BMWUSA", handle2 = "MercedesBenzUSA", handle3 = "Lexus")
+
+# Topic Model
+source(here("functions", "render_tm_report.R"))
+render_tm_report("BMWUSA", "timeline")
+render_tm_report("BMWUSA", "mentions")
+```
+
 ### Directories and Subdirectories
 
 The reports rely upon data and .Rmd files being in specific locations,
