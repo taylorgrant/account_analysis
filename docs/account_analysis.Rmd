@@ -34,8 +34,9 @@ links <- readRDS(data)$links
 
 pal <- c('#2f7ed8', '#0d233a', '#8bbc21', '#910000', '#1aadce',
          '#492970', '#f28f43', '#77a1e5', '#c42525', '#a6c96a')
-years <- grep("2018",sort(unique(lubridate::year(tl$created_at))), 
-              invert=TRUE, value = TRUE)
+
+years <- seq(max(unique(lubridate::year(tl$tsday)))-2,
+             max(unique(lubridate::year(tl$tsday))), 1)
 
 ```
 
@@ -389,34 +390,34 @@ Media Imagery {data-orientation=rows}
 Row {.tabset data-height=1100}
 -----------------------------------------------------------------------
 
-### Imagery Used - `r years[1]`  
+### Imagery Used - `r handle` `r years[3]`  
 
 <!-- Div fencing (https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html) -->
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collages[1])
+knitr::include_graphics(collage[length(collage)])
 ```
 
 :::: 
 
-### Imagery Used - `r years[2]`  
+### Imagery Used - `r handle` `r years[2]`  
 
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collages[2])
+knitr::include_graphics(collage[length(collage)-1])
 ```
 
 :::: 
 
 
-### Imagery Used - `r years[3]`  
+### Imagery Used - `r handle` `r years[1]`  
 
 :::: {style="display: flex;"}
 
 ```{r, error = TRUE, fig.retina = 1}
-knitr::include_graphics(collages[3])
+knitr::include_graphics(collage[length(collage)-2])
 ```
 
 :::: 
