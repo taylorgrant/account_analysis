@@ -495,9 +495,13 @@ ui3 <- count(tl3, source, sort=TRUE) %>%
 ui <- bind_rows(ui1, ui2, ui3)
 
 highchart() %>%
-  hc_add_series(ui, "bar", hcaes(x = h, y = n, group = source),
+  hc_add_series(ui1, "bar", hcaes(x = h, y = n, group = source),
                 showInLegend = TRUE) %>% 
-  hc_xAxis(categories = unique(ui$h)) %>%
+  hc_add_series(ui2, "bar", hcaes(x = h, y = n, group = source),
+                showInLegend = TRUE) %>%
+  hc_add_series(ui3, "bar", hcaes(x = h, y = n, group = source),
+                showInLegend = TRUE) %>%
+  # hc_xAxis(categories = unique(ui$h)) %>%
   hc_colors(pal) %>%
   hc_tooltip(crosshairs = TRUE,
              headerFormat = "",
@@ -689,26 +693,33 @@ highchart() %>%
 
 ```{r}
 retweet <- unlist(tl$retweet_screen_name) %>% 
-  discard(is.na) %>% 
-  tolower() %>% 
-  fct_lump(n = 10, ties = "first") %>% 
-  table(dnn="retweeted_users") %>% 
-  as_tibble() %>%
-  # broom::tidy() %>% 
-  arrange(desc(n)) %>% 
-  mutate(retweeted_users = factor(retweeted_users, levels = c(setdiff(retweeted_users, "Other"), "Other")) %>% fct_rev()) %>% 
-  filter(retweeted_users != "Other")
+  discard(is.na)
 
-highchart() %>%
-  hc_add_series(retweet, "bar", hcaes(x = retweeted_users, y = n), color = pal[1],
-                showInLegend = FALSE) %>% 
-  hc_xAxis(categories = retweet$retweeted_users,
-           allowDecimals = FALSE) %>% 
-  hc_yAxis(allowDecimals = FALSE) %>%
-  hc_tooltip(crosshairs = TRUE,
-             headerFormat = "",
-             pointFormat = "<b>@{point.retweeted_users}</b><br>
-                            <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+if (purrr::is_empty(retweet) == "TRUE") {
+  return()
+} else {
+  retweet <- retweet %>% 
+    tolower() %>% 
+    fct_lump(n = 10, ties = "first") %>% 
+    table(dnn="retweeted_users") %>%
+    as_tibble() %>%
+    # broom::tidy() %>% 
+    arrange(desc(n)) %>% 
+    mutate(retweeted_users = factor(retweeted_users, levels = c(setdiff(retweeted_users, "Other"), "Other")) %>% fct_rev()) %>% 
+    filter(retweeted_users != "Other")
+
+  highchart() %>%
+    hc_add_series(retweet, "bar", hcaes(x = retweeted_users, y = n), color = pal[1],
+                  showInLegend = FALSE) %>% 
+    hc_xAxis(categories = retweet$retweeted_users,
+             allowDecimals = FALSE) %>% 
+    hc_yAxis(allowDecimals = FALSE) %>%
+    hc_tooltip(crosshairs = TRUE,
+               headerFormat = "",
+               pointFormat = "<b>@{point.retweeted_users}</b><br>
+                              <span style=\"color:{point.color}\">\u25CF</span> Count: {point.y}<br>")
+}
+
 ```
 
 ### Quoted Users - `r handle`  
